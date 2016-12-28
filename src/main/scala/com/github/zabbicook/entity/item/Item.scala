@@ -60,8 +60,9 @@ case class Item[S <: EntityState](
   trapper_hosts: Option[String]=None, //	string	Allowed hosts. Used only by trapper items.
   trends: Option[IntProp]=None,           // 	integer	Number of days to keep item's trends data.
   units: Option[String]=None,         // 	string	Value units.
-  username: Option[String]=None       //	string	Username for authentication. Used by simple check, SSH, Telnet, database monitor and JMX items.
+  username: Option[String]=None,       //	string	Username for authentication. Used by simple check, SSH, Telnet, database monitor and JMX items.
   //valuemapid: EntityId	            // unhandled TODO string	ID of the associated value map.
+  applications: Option[Seq[Application[NotStored]]] = None // applications property.
 ) extends Entity[S] {
 
   override protected[this] val id: EntityId = itemid
@@ -115,7 +116,8 @@ case class Item[S <: EntityState](
     shouldBeUpdated(trapper_hosts, constant.trapper_hosts) ||
     shouldBeUpdated(trends, constant.trends) ||
     shouldBeUpdated(units, constant.units) ||
-    shouldBeUpdated(username, constant.username)
+    shouldBeUpdated(username, constant.username) ||
+    applications.getOrElse(Seq()).map(_.name).toSet != constant.applications.getOrElse(Seq()).map(_.name).toSet
   }
 }
 
@@ -171,6 +173,7 @@ object Item extends EntityCompanionMetaHelper {
                                 |Default: 365.""".stripMargin),
     value("units")("units")("Value units."),
     value("username")("username")("""Username for authentication. Used by simple check, SSH, Telnet, database monitor and JMX items.
-                                    |Required by SSH and Telnet items.""".stripMargin)
+                                    |Required by SSH and Telnet items.""".stripMargin),
+    arrayOf("applications")(Application.optional("applications"))
   ) _
 }

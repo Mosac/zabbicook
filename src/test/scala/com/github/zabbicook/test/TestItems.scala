@@ -3,9 +3,17 @@ package com.github.zabbicook.test
 import com.github.zabbicook.entity.Entity.NotStored
 import com.github.zabbicook.entity.item.{DataType, Item, ItemType, ValueType}
 import com.github.zabbicook.entity.prop.EnabledEnum
-import com.github.zabbicook.operation.Ops
+import com.github.zabbicook.operation.{ItemOp, Ops, Report}
+
+import scala.concurrent.Future
 
 trait TestItems extends TestTemplates { self: UnitSpec =>
+
+  case class TestItemsSetting(
+    template: String,
+    applications: Seq[String],
+    items: Seq[Item[NotStored]]
+  )
 
   protected[this] val item0: Item[NotStored] = Item(
     delay = 300,
@@ -41,18 +49,33 @@ trait TestItems extends TestTemplates { self: UnitSpec =>
     value_type = ValueType.character
   )
 
-  protected[this] val testItems: Map[String, Seq[Item[NotStored]]] = Map(
-    testTemplates(0).template.host -> Seq(item0, item1),
-    testTemplates(1).template.host -> Seq(item2)
+  protected[this] val testItems: Seq[TestItemsSetting] = Seq(
+    TestItemsSetting(
+      testTemplates(0).template.host,
+      Seq(),
+      Seq(item0, item1)
+    ),
+    TestItemsSetting(
+      testTemplates(1).template.host,
+      Seq(),
+      Seq(item2)
+    )
   )
+
+  def presentItems(op: ItemOp, settings: Seq[TestItemsSetting]): Report = {
+    await(Future.traverse(settings)(s => op.presentWithTemplate(s.template, s.applications, s.items))
+      .map(Report.flatten))
+  }
 
   def presentTestItems(ops: Ops): Unit = {
     presentTestTemplates(ops)
-    await(ops.item.presentWithTemplate(testItems))
+    presentItems(ops.item, testItems)
   }
 
   def cleanTestItems(ops: Ops): Unit = {
-    await(ops.item.absentWithTemplate(testItems.mapValues(_.map(_.name))))
+    await(ops.item.absentWithTemplate(
+      testItems.map(i => (i.template, i.items.map(_.name))).toMap
+    ))
     cleanTestTemplates(ops)
   }
 }
